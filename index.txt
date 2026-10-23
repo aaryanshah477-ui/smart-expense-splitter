@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Expense Splitter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f1;--panel:#fff;--ink:#10302a;--mute:#5f7a73;--line:#d5e0dc;--acc:#0c7a63;--acc-ink:#fff;--warn:#b4561b;--chip:#e3efeb}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1c19;--panel:#142925;--ink:#e6f3ef;--mute:#8fb0a7;--line:#25433d;--acc:#3ccfae;--acc-ink:#07211b;--warn:#f0a35e;--chip:#1d3832}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",system-ui,sans-serif;line-height:1.5}
+main{max-width:1040px;margin:0 auto;padding:28px 18px 48px}
+h1{font-size:clamp(1.9rem,5vw,3rem);font-weight:800;letter-spacing:-.02em;margin:0}
+.sub{color:var(--mute);margin:4px 0 24px}
+.grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+h2{font-size:1.05rem;margin:0 0 12px;font-weight:600}
+.line{display:flex;gap:8px;flex-wrap:wrap}
+input{font:inherit;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-width:0}
+input[type=text]{flex:2 1 120px}input[type=number]{flex:1 1 70px}
+button{font:inherit;font-weight:600;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+button.p{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{background:var(--chip);border-radius:99px;padding:4px 6px 4px 12px;font-size:.92rem;display:inline-flex;align-items:center;gap:4px}
+.chip button{border:0;padding:0 6px;font-size:1rem;color:var(--mute)}
+.item{border-top:1px solid var(--line);padding:12px 0}
+.item:first-of-type{border-top:0}
+.ih{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.ih span:last-child{font-variant-numeric:tabular-nums}
+.ih button{border:0;padding:0 6px;color:var(--mute)}
+.who{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.who button{padding:3px 11px;border-radius:99px;font-size:.88rem;font-weight:400}
+.who button[aria-pressed=true]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
+.warn{color:var(--warn);font-size:.88rem;margin-top:6px}
+.person{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding:12px 0}
+.person:first-of-type{border-top:0}
+.person small{display:block;color:var(--mute);font-size:.85rem}
+.amt{font-size:1.5rem;font-weight:800;font-variant-numeric:tabular-nums}
+.tot{display:flex;justify-content:space-between;font-weight:800;font-size:1.1rem;border-top:2px solid var(--ink);padding-top:10px;margin-top:4px}
+.empty{color:var(--mute)}
+label.s{display:flex;align-items:center;gap:6px;font-size:.92rem;color:var(--mute)}
+label.s input{width:70px}
+</style>
+</head>
+<body>
+<main>
+<h1>Smart Expense Splitter</h1>
+<p class="sub">Add friends, list the dishes, tap who ate what. GST and service charge are shared in proportion.</p>
+<div class="grid">
+ <div>
+  <section class="card"><h2>Friends</h2>
+   <div class="line"><input type="text" id="fn" placeholder="Friend’s name" aria-label="Friend’s name"><button class="p" id="addF">Add friend</button></div>
+   <div class="chips" id="friends"></div></section>
+  <section class="card"><h2>Dishes</h2>
+   <div class="line"><input type="text" id="dn" placeholder="Dish name" aria-label="Dish name"><input type="number" id="dp" placeholder="Price ₹" min="0" aria-label="Price in rupees"><input type="number" id="dq" value="1" min="1" aria-label="Quantity"><button class="p" id="addD">Add dish</button></div>
+   <div id="items" style="margin-top:8px"></div></section>
+  <section class="card"><h2>Taxes</h2>
+   <div class="line"><label class="s">GST % <input type="number" id="gst" value="5" min="0"></label><label class="s">Service charge % <input type="number" id="sc" value="5" min="0"></label></div></section>
+ </div>
+ <section class="card" aria-live="polite"><h2>Who pays what</h2><div id="out"></div>
+  <div class="line" style="margin-top:14px"><button class="p" id="wa">Share on WhatsApp</button><button id="cp">Copy summary</button></div></section>
+</div>
+</main>
+<script>
+const S={friends:["Aarav","Riya","Kabir","Meera"],items:[],n:0};
+const add=(name,price,qty,who)=>S.items.push({id:++S.n,name,price,qty,who:new Set(who)});
+add("Paneer Tikka",320,1,["Aarav","Riya","Meera"]);
+add("Butter Chicken",450,1,["Kabir","Aarav"]);
+add("Garlic Naan",60,4,["Aarav","Riya","Kabir","Meera"]);
+add("Sweet Lassi",120,2,["Riya","Meera"]);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr=n=>"₹"+n.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function compute(){
+  const rate=(+$("gst").value||0)+(+$("sc").value||0);
+  const r={};S.friends.forEach(f=>r[f]={food:0,tax:0,total:0,dishes:0});
+  let unassigned=0;
+  S.items.forEach(i=>{
+    const amt=i.price*i.qty,w=[...i.who].filter(f=>r[f]);
+    if(!w.length){unassigned+=amt;return}
+    w.forEach(f=>{r[f].food+=amt/w.length;r[f].dishes++});
+  });
+  S.friends.forEach(f=>{r[f].tax=r[f].food*rate/100;r[f].total=r[f].food+r[f].tax});
+  return {r,unassigned,rate};
+}
+function render(){
+  $("friends").innerHTML=S.friends.map((f,i)=>`<span class="chip">${esc(f)}<button data-rf="${i}" aria-label="Remove ${esc(f)}">×</button></span>`).join("")||'<span class="empty">No friends yet.</span>';
+  $("items").innerHTML=S.items.map(i=>`<div class="item"><div class="ih"><span>${i.qty} × ${esc(i.name)}</span><span>${inr(i.price*i.qty)}<button data-ri="${i.id}" aria-label="Remove ${esc(i.name)}">×</button></span></div>
+   <div class="who">${S.friends.map(f=>`<button data-t="${i.id}|${esc(f)}" aria-pressed="${i.who.has(f)}">${esc(f)}</button>`).join("")}</div>
+   ${[...i.who].filter(f=>S.friends.includes(f)).length?"":'<div class="warn">Tap a name to assign this dish.</div>'}</div>`).join("")||'<p class="empty">Add your first dish above.</p>';
+  const {r,unassigned,rate}=compute();
+  let sum=0;
+  $("out").innerHTML=S.friends.map(f=>{sum+=r[f].total;return `<div class="person"><div><strong>${esc(f)}</strong><small>${r[f].dishes} dishes · food ${inr(r[f].food)} + tax ${inr(r[f].tax)}</small></div><div class="amt">${inr(r[f].total)}</div></div>`}).join("")
+   +`<div class="tot"><span>Bill total (${rate}% tax)</span><span>${inr(sum)}</span></div>`
+   +(unassigned?`<div class="warn">${inr(unassigned)} of dishes not assigned to anyone yet.</div>`:"");
+}
+function summary(){
+  const {r}=compute();
+  return "Bill split:\n"+S.friends.map(f=>`${f}: ${inr(r[f].total)}`).join("\n");
+}
+$("addF").onclick=()=>{const v=$("fn").value.trim();if(v&&!S.friends.includes(v)){S.friends.push(v);$("fn").value="";render()}};
+$("addD").onclick=()=>{const n=$("dn").value.trim(),p=+$("dp").value,q=+$("dq").value||1;
+  if(n&&p>0){add(n,p,q,S.friends);$("dn").value="";$("dp").value="";$("dq").value=1;render()}};
+document.body.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.rf!==undefined){const f=S.friends.splice(+b.dataset.rf,1)[0];S.items.forEach(i=>i.who.delete(f));render()}
+  if(b.dataset.ri){S.items=S.items.filter(i=>i.id!=b.dataset.ri);render()}
+  if(b.dataset.t){const [id,f]=b.dataset.t.split("|"),i=S.items.find(x=>x.id==id);
+    const name=S.friends.find(x=>esc(x)===f);i.who.has(name)?i.who.delete(name):i.who.add(name);render()}
+});
+["gst","sc"].forEach(id=>$(id).addEventListener("input",render));
+$("wa").onclick=()=>window.open("https://wa.me/?text="+encodeURIComponent(summary()),"_blank");
+$("cp").onclick=()=>{navigator.clipboard.writeText(summary()).then(()=>{$("cp").textContent="Copied";setTimeout(()=>$("cp").textContent="Copy summary",1500)}).catch(()=>{})};
+render();
+</script>
+</body>
+</html>
